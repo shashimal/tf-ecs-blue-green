@@ -6,7 +6,7 @@ resource "aws_codedeploy_app" "codedeploy_app" {
 resource "aws_codedeploy_deployment_group" "codedeploy_app_group" {
   app_name               = aws_codedeploy_app.codedeploy_app.name
   deployment_group_name  = "cook-service-group"
-  deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
+  deployment_config_name = "CodeDeployDefault.ECSLinear10PercentEvery3Minutes"
   service_role_arn       = var.codedeploy_service_role_arn
 
   auto_rollback_configuration {
