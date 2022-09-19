@@ -36,29 +36,6 @@ module "alb_security_group" {
   vpc_id = module.vpc.vpc_id
 }
 
-module "alb" {
-  source              = "./modules/alb"
-  app_name            = var.app_name
-  alb_security_groups = [module.alb_security_group.security_group_id]
-  public_subnets      = module.vpc.public_subnet_ids
-  vpc_id = module.vpc.vpc_id
-}
-
-module "iam" {
-  source = "./modules/iam"
-  codepipeline_artifacts_bucket = aws_s3_bucket.codepipeline_artifact_bucket.id
-}
-
-module "cook_service" {
-  source = "./modules/ecs"
-  cluster_name = "cook"
-  alb = module.alb.alb_arn
-  cook_target_group = module.alb.blue_target_group
-  public_subnets = module.vpc.public_subnet_ids
-  cook_security_group_id = aws_security_group.ecs_service_sg.id
-  task_role_arn = module.iam.ecs_task_role_arn
-}
-
 resource "aws_security_group" "ecs_service_sg" {
   name = "ecs_service_sg"
   description = "ecs_service_sg"
@@ -90,31 +67,43 @@ resource "aws_s3_bucket" "codepipeline_artifact_bucket" {
   }
 }
 
+module "alb" {
+  source              = "./modules/alb"
+  app_name            = var.app_name
+  alb_security_groups = [module.alb_security_group.security_group_id]
+  public_subnets      = module.vpc.public_subnet_ids
+  vpc_id = module.vpc.vpc_id
+}
+
+module "iam" {
+  source = "./modules/iam"
+  codepipeline_artifacts_bucket = aws_s3_bucket.codepipeline_artifact_bucket.id
+}
+
+module "ecs_cook_service" {
+  source = "./modules/ecs"
+  cluster_name = "cook"
+  alb = module.alb.alb_arn
+  cook_target_group = module.alb.blue_target_group
+  public_subnets = module.vpc.public_subnet_ids
+  cook_security_group_id = aws_security_group.ecs_service_sg.id
+  task_role_arn = module.iam.ecs_task_role_arn
+}
+
 module "codebuild_project" {
   source = "./modules/codebuild"
   service_role_arn = module.iam.codebuild_role_arn
 }
 
-module "codedeply" {
+module "codedeploy" {
   source = "./modules/codedeploy"
   alb_listener_blue_arn       = module.alb.blue_listener_arn
   alb_listener_test_arn       = module.alb.test_listener_arn
   alb_target_group_blue_name  = module.alb.blue_target_group_name
   alb_target_group_green_name = module.alb.green_target_group_name
   codedeploy_service_role_arn = module.iam.codedeploy_role_arn
-  ecs_cluster_name            = module.cook_service.ecs_cluster_name
-  ecs_cook_service_name       = module.cook_service.ecs_service_name
-}
-
-module "codepipeline" {
-  source = "./modules/codepipeline"
-  codepipeline_role_arn = module.iam.codepipeline_role_arn
-  repository_name = "cook-service"
-  codepipeline_artifacts_bucket = aws_s3_bucket.codepipeline_artifact_bucket.id
-  codebuild_project_name = module.codebuild_project.codebuild_project_name
-
-  codedeploy_app_name              = module.codedeply.codedeploy_app_name
-  codedeploy_deployment_group_name = module.codedeply.codedeploy_deployment_group_name
+  ecs_cluster_name            = module.ecs_cook_service.ecs_cluster_name
+  ecs_cook_service_name       = module.ecs_cook_service.ecs_service_name
 }
 
 module "codedeploy_lambda_hook" {
@@ -126,3 +115,15 @@ module "codedeploy_lambda_hook" {
   execution_role_arn    = module.iam.lambda_execution_role_arn
   runtime       = "nodejs12.x"
 }
+
+module "codepipeline" {
+  source = "./modules/codepipeline"
+  codepipeline_role_arn = module.iam.codepipeline_role_arn
+  repository_name = "cook-service"
+  codepipeline_artifacts_bucket = aws_s3_bucket.codepipeline_artifact_bucket.id
+  codebuild_project_name = module.codebuild_project.codebuild_project_name
+
+  codedeploy_app_name              = module.codedeploy.codedeploy_app_name
+  codedeploy_deployment_group_name = module.codedeploy.codedeploy_deployment_group_name
+}
+
