@@ -1,0 +1,22 @@
+${jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "sqs:DeleteMessage",
+                "sqs:DeleteQueue",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ListDeadLetterSourceQueues",
+                "sqs:ListQueueTags",
+                "sqs:PurgeQueue",
+                "sqs:ReceiveMessage",
+                "sqs:RemovePermission",
+                "sqs:SendMessage"
+            ],
+            "Resource": sqs_queues,
+
+            "Effect": "Allow"
+        }
+    ]
+})}
