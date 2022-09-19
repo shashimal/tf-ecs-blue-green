@@ -17,6 +17,7 @@ resource "aws_codepipeline" "codepipeline" {
       configuration    = {
         RepositoryName = var.repository_name
         BranchName     = "master"
+        PollForSourceChanges = false
       }
     }
   }
