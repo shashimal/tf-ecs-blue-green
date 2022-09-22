@@ -127,3 +127,11 @@ module "codepipeline" {
   codedeploy_deployment_group_name = module.codedeploy.codedeploy_deployment_group_name
 }
 
+module "pipeline" {
+  source = "./modules/cicd/codepipeline"
+
+  codebuild_project_name          = "preview-service"
+  codebuild_service_role_arn      = module.iam.codebuild_role_arn
+  codebuild_environment_variables = [{ name = "REGION", value = "us-east-1", type = "PLAINTEXT" }]
+
+}
