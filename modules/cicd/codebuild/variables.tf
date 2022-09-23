@@ -12,6 +12,7 @@ variable "codebuild_project_description" {
 variable "codebuild_service_role_arn" {
   type        = string
   description = "Codebuild service role arn"
+  default = ""
 }
 
 variable "codebuild_artifact_type" {
@@ -52,4 +53,28 @@ variable "codebuild_environment_variables" {
   }))
   description = "Environment variables"
   default = []
+}
+
+variable "codebuild_privileged_mode" {
+  type = bool
+  default = true
+}
+
+variable "codebuild_credentials_type" {
+  type = string
+  default = "CODEBUILD"
+}
+
+variable "artifact_bucket" {
+  type = string
+}
+
+variable "account" {
+  type = string
+}
+
+variable "tags" {
+  type        = map(string)
+  default     = {}
+  description = "Additional tags"
 }
