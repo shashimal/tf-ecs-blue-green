@@ -1,3 +1,13 @@
+variable "artifact_bucket" {
+  type = string
+  description = "Codebuild artifact location"
+}
+
+variable "account" {
+  type = string
+  description = "AWS account"
+}
+
 variable "codebuild_project_name" {
   type        = string
   description = "Codebuild project name"
@@ -57,20 +67,14 @@ variable "codebuild_environment_variables" {
 
 variable "codebuild_privileged_mode" {
   type = bool
+  description = "Whether to enable running the Docker daemon inside a Docker container."
   default = true
 }
 
 variable "codebuild_credentials_type" {
   type = string
+  description = "Type of credentials AWS CodeBuild uses to pull images in your build"
   default = "CODEBUILD"
-}
-
-variable "artifact_bucket" {
-  type = string
-}
-
-variable "account" {
-  type = string
 }
 
 variable "tags" {
