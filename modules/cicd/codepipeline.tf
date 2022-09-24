@@ -62,9 +62,27 @@ resource "aws_codepipeline" "pipeline" {
       }
     }
   }
-}
+  stage {
+    name = "Deploy"
+    action {
+      name            = "Deploy"
+      category        = "Deploy"
+      owner           = "AWS"
+      provider        = "CodeDeployToECS"
+      input_artifacts = ["BuildArti"]
+      version         = "1"
+      configuration   = {
+        DeploymentGroupName            = aws_codedeploy_deployment_group.deployment_group.deployment_group_name
+        ApplicationName                = aws_codedeploy_app.app.name
+        AppSpecTemplateArtifact        = "BuildArti"
+        AppSpecTemplatePath            = "appspec.yaml"
+        TaskDefinitionTemplateArtifact = "BuildArti"
+        TaskDefinitionTemplatePath     = "taskdef.json"
+        Image1ArtifactName             = "BuildArti"
+        Image1ContainerName            = "IMAGE1_NAME"
 
+      }
+    }
+  }
 
-output "d" {
-  value = local.source_configuration["configuration"]
 }
