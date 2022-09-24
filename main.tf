@@ -61,11 +61,6 @@ resource "aws_security_group_rule" "alb_sg_outbound_rule" {
   type              = "egress"
 }
 
-resource "aws_s3_bucket" "codepipeline_artifact_bucket" {
-  lifecycle {
-    prevent_destroy = false
-  }
-}
 
 module "alb" {
   source              = "./modules/alb"
@@ -77,7 +72,6 @@ module "alb" {
 
 module "iam" {
   source                        = "./modules/iam"
-  codepipeline_artifacts_bucket = aws_s3_bucket.codepipeline_artifact_bucket.id
 }
 
 module "ecs_cook_service" {
@@ -90,48 +84,34 @@ module "ecs_cook_service" {
   task_role_arn          = module.iam.ecs_task_role_arn
 }
 
-module "codebuild_project" {
-  source           = "./modules/codebuild"
-  service_role_arn = module.iam.codebuild_role_arn
-}
-
-module "codedeploy" {
-  source                      = "./modules/codedeploy"
-  alb_listener_blue_arn       = module.alb.blue_listener_arn
-  alb_listener_test_arn       = module.alb.test_listener_arn
-  alb_target_group_blue_name  = module.alb.blue_target_group_name
-  alb_target_group_green_name = module.alb.green_target_group_name
-  codedeploy_service_role_arn = module.iam.codedeploy_role_arn
-  ecs_cluster_name            = module.ecs_cook_service.ecs_cluster_name
-  ecs_cook_service_name       = module.ecs_cook_service.ecs_service_name
-}
-
-module "codedeploy_lambda_hook" {
-  source = "./modules/lambda"
-
-  file_name          = "${path.module}/lambda/AfterAllowTestTrafficHook.zip"
-  function_name      = "AfterAllowTestTrafficHook"
-  handler            = "AfterAllowTestTrafficHook.handler"
-  execution_role_arn = module.iam.lambda_execution_role_arn
-  runtime            = "nodejs12.x"
-}
-
-module "codepipeline" {
-  source                        = "./modules/codepipeline"
-  codepipeline_role_arn         = module.iam.codepipeline_role_arn
-  repository_name               = "cook-service"
-  codepipeline_artifacts_bucket = aws_s3_bucket.codepipeline_artifact_bucket.id
-  codebuild_project_name        = module.codebuild_project.codebuild_project_name
-
-  codedeploy_app_name              = module.codedeploy.codedeploy_app_name
-  codedeploy_deployment_group_name = module.codedeploy.codedeploy_deployment_group_name
-}
-
 module "pipeline" {
-  source = "./modules/cicd/codepipeline"
+  source                  = "./modules/cicd"
+  account                 = data.aws_caller_identity.current.account_id
+  pipeline_name          = "preview-service"
 
-  codebuild_project_name          = "preview-service"
-  codebuild_service_role_arn      = module.iam.codebuild_role_arn
-  codebuild_environment_variables = [{ name = "REGION", value = "us-east-1", type = "PLAINTEXT" }]
+  #Source Stage
+  branch_name            = "master"
+  repository_name        = "cook-service"
+  source_repository_type = "codecommit"
 
+  #Build Stage
+  project_name = "preview-service"
+  build_environment_variables = [
+    { name = "REGION", value = "us-east-1", type = "PLAINTEXT" },
+    { name = "ACCOUNT", value = data.aws_caller_identity.current.account_id, type = "PLAINTEXT" },
+    { name = "ECR_REPO", value = "", type = "PLAINTEXT" }
+  ]
+
+  #Deploy Stage
+  alb_prod_listener_arn   = module.alb.blue_listener_arn
+  alb_test_listener_arn   = module.alb.test_listener_arn
+  alb_target_group_one    = module.alb.blue_target_group_name
+  alb_target_group_second = module.alb.green_target_group_name
+  application_name        = "preview-service"
+  ecs_cluster_name        = module.ecs_cook_service.ecs_cluster_name
+  ecs_service_name        = module.ecs_cook_service.ecs_service_name
+}
+
+output "albarns" {
+  value = module.alb.test_listener_arn
 }

@@ -1,14 +1,13 @@
-resource "aws_codedeploy_app" "codedeploy_app" {
-  name             = "cook-service"
+resource "aws_codedeploy_app" "app" {
+  name             = var.application_name
   compute_platform = "ECS"
 }
 
-resource "aws_codedeploy_deployment_group" "codedeploy_app_group" {
-  app_name               = aws_codedeploy_app.codedeploy_app.name
-  deployment_group_name  = "cook-service-group"
-#  deployment_config_name = "CodeDeployDefault.ECSLinear10PercentEvery3Minutes"
+resource "aws_codedeploy_deployment_group" "deployment_group" {
+  deployment_group_name = "${var.application_name}-deployment-group"
+  app_name              = aws_codedeploy_app.app.name
+  service_role_arn      = var.deploy_service_role_arn != "" ? var.deploy_service_role_arn : aws_iam_role.codedeploy_role.arn
   deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
-  service_role_arn       = var.codedeploy_service_role_arn
 
   auto_rollback_configuration {
     enabled = true
@@ -21,7 +20,7 @@ resource "aws_codedeploy_deployment_group" "codedeploy_app_group" {
     }
     terminate_blue_instances_on_deployment_success {
       action                           = "TERMINATE"
-      termination_wait_time_in_minutes = 60
+      termination_wait_time_in_minutes = var.termination_wait_time_in_minutes
     }
   }
 
@@ -29,27 +28,26 @@ resource "aws_codedeploy_deployment_group" "codedeploy_app_group" {
     deployment_option = "WITH_TRAFFIC_CONTROL"
     deployment_type   = "BLUE_GREEN"
   }
+
   ecs_service {
     cluster_name = var.ecs_cluster_name
-    service_name = var.ecs_cook_service_name
+    service_name = var.ecs_service_name
   }
 
   load_balancer_info {
     target_group_pair_info {
       prod_traffic_route {
-        listener_arns = [var.alb_listener_blue_arn]
+        listener_arns = [var.alb_prod_listener_arn]
       }
       test_traffic_route {
-        listener_arns = [var.alb_listener_test_arn]
+        listener_arns = [var.alb_test_listener_arn]
       }
       target_group {
-        name = var.alb_target_group_blue_name
+        name = var.alb_target_group_one
       }
       target_group {
-        name = var.alb_target_group_green_name
+        name = var.alb_target_group_second
       }
     }
   }
-
-
 }
