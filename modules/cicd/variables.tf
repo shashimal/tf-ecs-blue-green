@@ -147,3 +147,26 @@ variable "alb_target_group_one" {
 variable "alb_target_group_second" {
   type = string
 }
+
+#Approval Stage
+variable "approval_required" {
+  type = bool
+  default = false
+}
+
+variable "approval_sns_topic_arn" {
+  type = string
+  default = ""
+}
+variable "approval_custom_data" {
+  default = "Need approval for production deployment"
+}
+
+variable "approval_sns_topic_name" {
+  default = "codepipeline-approval"
+}
+
+variable "approval_external_entity_link" {
+  type = string
+  default = "sph.com.sg"
+}

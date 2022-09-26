@@ -19,7 +19,6 @@ locals {
   }
 
   source_configuration = lookup(local.source_repository_types, var.source_repository_type, "")
-
 }
 
 resource "aws_s3_bucket" "artifact_bucket" {
@@ -62,27 +61,47 @@ resource "aws_codepipeline" "pipeline" {
       }
     }
   }
-  stage {
-    name = "Deploy"
-    action {
-      name            = "Deploy"
-      category        = "Deploy"
-      owner           = "AWS"
-      provider        = "CodeDeployToECS"
-      input_artifacts = ["BuildArti"]
-      version         = "1"
-      configuration   = {
-        DeploymentGroupName            = aws_codedeploy_deployment_group.deployment_group.deployment_group_name
-        ApplicationName                = aws_codedeploy_app.app.name
-        AppSpecTemplateArtifact        = "BuildArti"
-        AppSpecTemplatePath            = "appspec.yaml"
-        TaskDefinitionTemplateArtifact = "BuildArti"
-        TaskDefinitionTemplatePath     = "taskdef.json"
-        Image1ArtifactName             = "BuildArti"
-        Image1ContainerName            = "IMAGE1_NAME"
+  dynamic "stage" {
 
+    for_each = var.approval_required ? [1] : []
+    content {
+      name = "Approve"
+      action {
+        name     = "Approval"
+        category = "Approval"
+        owner    = "AWS"
+        provider = "Manual"
+        version  = "1"
+        configuration = {
+          NotificationArn    = var.approval_sns_topic_arn != "" ? var.approval_sns_topic_arn : element(aws_sns_topic.pipeline_approval.*.arn, 0)
+          CustomData         = var.approval_custom_data
+          ExternalEntityLink = var.approval_external_entity_link
+        }
       }
     }
   }
+
+stage {
+  name = "Deploy"
+  action {
+    name            = "Deploy"
+    category        = "Deploy"
+    owner           = "AWS"
+    provider        = "CodeDeployToECS"
+    input_artifacts = ["BuildArti"]
+    version         = "1"
+    configuration   = {
+      DeploymentGroupName            = aws_codedeploy_deployment_group.deployment_group.deployment_group_name
+      ApplicationName                = aws_codedeploy_app.app.name
+      AppSpecTemplateArtifact        = "BuildArti"
+      AppSpecTemplatePath            = "appspec.yaml"
+      TaskDefinitionTemplateArtifact = "BuildArti"
+      TaskDefinitionTemplatePath     = "taskdef.json"
+      Image1ArtifactName             = "BuildArti"
+      Image1ContainerName            = "IMAGE1_NAME"
+
+    }
+  }
+}
 
 }

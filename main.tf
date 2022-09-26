@@ -71,7 +71,7 @@ module "alb" {
 }
 
 module "iam" {
-  source                        = "./modules/iam"
+  source = "./modules/iam"
 }
 
 module "ecs_cook_service" {
@@ -85,9 +85,9 @@ module "ecs_cook_service" {
 }
 
 module "pipeline" {
-  source                  = "./modules/cicd"
-  account                 = data.aws_caller_identity.current.account_id
-  pipeline_name          = "preview-service"
+  source        = "./modules/cicd"
+  account       = data.aws_caller_identity.current.account_id
+  pipeline_name = "preview-service"
 
   #Source Stage
   branch_name            = "master"
@@ -95,12 +95,17 @@ module "pipeline" {
   source_repository_type = "codecommit"
 
   #Build Stage
-  project_name = "preview-service"
+  project_name                = "preview-service"
   build_environment_variables = [
     { name = "REGION", value = "us-east-1", type = "PLAINTEXT" },
     { name = "ACCOUNT", value = data.aws_caller_identity.current.account_id, type = "PLAINTEXT" },
     { name = "ECR_REPO", value = "", type = "PLAINTEXT" }
   ]
+
+  #Approval Stage
+  approval_required             = true
+  approval_custom_data          = "Need approval for production deployment"
+  approval_external_entity_link = "google.com"
 
   #Deploy Stage
   alb_prod_listener_arn   = module.alb.blue_listener_arn
@@ -110,8 +115,4 @@ module "pipeline" {
   application_name        = "preview-service"
   ecs_cluster_name        = module.ecs_cook_service.ecs_cluster_name
   ecs_service_name        = module.ecs_cook_service.ecs_service_name
-}
-
-output "albarns" {
-  value = module.alb.test_listener_arn
 }
